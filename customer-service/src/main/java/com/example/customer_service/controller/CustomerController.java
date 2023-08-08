@@ -5,6 +5,7 @@ import com.example.customer_service.business.service.CustomerService;
 import com.example.customer_service.model.Customer;
 import com.example.customer_service.swagger.DescriptionVariables;
 import com.example.customer_service.swagger.HTMLResponseMessages;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.annotations.*;
 import jakarta.validation.Valid;
 import lombok.NonNull;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +28,12 @@ public class CustomerController {
 
     @Autowired
     CustomerRepository repository;
+
+    private final CustomerService customerService; // Подключаем ваш сервис CustomerService
+
+    public CustomerController(CustomerService customerService) {
+        this.customerService = customerService;
+    }
 
     @GetMapping("/all")
     @ApiOperation(value = "Finds all customers list",
@@ -145,6 +153,18 @@ public class CustomerController {
         log.info("Customer with id {} is deleted", id);
         service.deleteCustomerById(id);
         return  ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/customer/{customerId}")
+    public ResponseEntity<List<Long>> getCustomerAccountIds(@PathVariable String customerId) {
+        Flux<JsonNode> customerAccountIdsFlux = customerService.getAccountsByCustomerId(customerId);
+
+        List<Long> customerAccountIds = customerAccountIdsFlux
+                .map(jsonNode -> jsonNode.get("accountId").asLong()) // Предполагается, что в JsonNode есть поле "accountId"
+                .collectList()
+                .block(); // Ожидаем завершения и получаем результат
+
+        return ResponseEntity.ok(customerAccountIds);
     }
 }
 

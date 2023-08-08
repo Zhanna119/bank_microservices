@@ -5,9 +5,13 @@ import com.example.customer_service.business.repository.CustomerRepository;
 import com.example.customer_service.business.repository.model.CustomerDAO;
 import com.example.customer_service.business.service.CustomerService;
 import com.example.customer_service.model.Customer;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +25,15 @@ public class CustomerServiceImpl implements CustomerService {
     @Autowired
     CustomerMapper mapper;
 
+    private final WebClient webClient;
+
+    public CustomerServiceImpl(WebClient.Builder webClientBuilder) {
+        this.webClient = webClientBuilder.baseUrl("http://localhost:8765/accounts").build();
+    }
+
+    public CustomerServiceImpl(WebClient webClient) {
+        this.webClient = webClient;
+    }
 
     @Override
     public List<Customer> getAllCustomers() {
@@ -72,5 +85,12 @@ public class CustomerServiceImpl implements CustomerService {
     public void deleteCustomerById(Long id) {
         log.info("Deleting customer with id {}", id);
         repository.deleteById(id);
+    }
+
+    public Flux<JsonNode> getAccountsByCustomerId(String customerId) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/getByCustomerId").queryParam("customerId", customerId).build())
+                .retrieve()
+                .bodyToFlux(JsonNode.class);
     }
 }
